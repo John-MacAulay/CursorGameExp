@@ -24,10 +24,10 @@ export default class GameScene extends Phaser.Scene {
 
     preload() {
         // Load game assets
-        this.load.image('player', 'src/assets/player.png');
+        this.load.image('player', '/assets/player.png');
         
         // Create a temporary background texture
-        const graphics = this.make.graphics({ x: 0, y: 0, add: false });
+        const graphics = this.make.graphics({ x: 0, y: 0 });
         
         // Draw a building pattern
         graphics.fillStyle(0x2c3e50); // Dark blue-gray for buildings
@@ -60,7 +60,9 @@ export default class GameScene extends Phaser.Scene {
         this.groundY = this.player.y;
 
         // Set up keyboard controls
-        this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+        if (this.input.keyboard) {
+            this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+        }
 
         // Add some text to show controls
         this.add.text(16, 16, 'Press SPACE to jump', {
