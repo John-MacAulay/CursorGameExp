@@ -5,6 +5,7 @@ export default class GameScene extends Phaser.Scene {
     private player!: Phaser.GameObjects.Sprite;
     private coins: Phaser.GameObjects.Sprite[] = [];
     private taxMan?: Phaser.GameObjects.Sprite;
+    private taxManHitbox?: Phaser.GameObjects.Rectangle;
     private score: number = 0;
     private scoreText!: Phaser.GameObjects.Text;
     private scoreTimer!: Phaser.Time.TimerEvent;
@@ -17,6 +18,7 @@ export default class GameScene extends Phaser.Scene {
     private maxJumpDuration: number = 800;
     private jumpProgress: number = 0;
     private jumpStep: number = 0.05;
+    private jumpHeight: number = 400;
     private backgroundKeys: string[] = ['background1', 'background2', 'background3'];
     private playerAnimationTimer!: Phaser.Time.TimerEvent;
     private coinAnimationTimer!: Phaser.Time.TimerEvent;
@@ -24,8 +26,10 @@ export default class GameScene extends Phaser.Scene {
     private taxManTimer!: Phaser.Time.TimerEvent;
     private currentPlayerFrame: number = 1;
     private currentCoinFrame: number = 1;
-    private taxManSpeed: number = 3;
+    private minTaxManSpeed: number = 7; // Minimum speed
+    private maxTaxManSpeed: number = 10; // Maximum speed
     private gameOver: boolean = false;
+    private debugMode: boolean = false; // Disable debug mode
 
     constructor() {
         super({ key: 'GameScene' });
@@ -117,10 +121,22 @@ export default class GameScene extends Phaser.Scene {
         // Only spawn if no tax man exists and game is not over
         if (!this.taxMan && !this.gameOver) {
             this.taxMan = this.add.sprite(this.scale.width + 50, this.groundY, 'taxman');
-            this.taxMan.setScale(0.2);
+            this.taxMan.setScale(0.15);
             
-            // Set up next spawn after random delay
-            const nextSpawnDelay = Phaser.Math.Between(5000, 10000);
+            // Create a smaller hitbox for the tax man
+            const hitboxWidth = this.taxMan.width * 0.03;
+            const hitboxHeight = this.taxMan.height * 0.08;
+            this.taxManHitbox = this.add.rectangle(
+                this.taxMan.x,
+                this.taxMan.y,
+                hitboxWidth,
+                hitboxHeight
+            );
+            this.taxManHitbox.setOrigin(0.5);
+            this.taxManHitbox.setVisible(false);
+            
+            // Set up next spawn after much longer random delay (8-12 minutes)
+            const nextSpawnDelay = Phaser.Math.Between(480000, 720000);
             this.taxManTimer = this.time.addEvent({
                 delay: nextSpawnDelay,
                 callback: this.spawnTaxMan,
@@ -131,22 +147,32 @@ export default class GameScene extends Phaser.Scene {
     }
 
     updateTaxMan() {
-        if (this.taxMan && !this.gameOver) {
-            // Move tax man towards player
-            this.taxMan.x -= this.taxManSpeed;
+        if (this.taxMan && this.taxManHitbox && !this.gameOver) {
+            // Move tax man towards player with random speed between min and max
+            const currentSpeed = Phaser.Math.Between(this.minTaxManSpeed, this.maxTaxManSpeed);
+            this.taxMan.x -= currentSpeed;
+            this.taxManHitbox.x = this.taxMan.x;
+            this.taxManHitbox.y = this.taxMan.y;
 
-            // Check for collision with player
+            // Check for collision with player using the hitbox
             if (Phaser.Geom.Intersects.RectangleToRectangle(
                 this.player.getBounds(),
-                this.taxMan.getBounds()
+                this.taxManHitbox.getBounds()
             )) {
+                if (this.debugMode) {
+                    console.log('Collision detected!');
+                    console.log('Player bounds:', this.player.getBounds());
+                    console.log('TaxMan hitbox bounds:', this.taxManHitbox.getBounds());
+                }
                 this.endGame();
             }
 
             // Remove tax man if off screen
             if (this.taxMan.x < -50) {
                 this.taxMan.destroy();
+                this.taxManHitbox.destroy();
                 this.taxMan = undefined;
+                this.taxManHitbox = undefined;
                 this.spawnTaxMan(); // Set up next spawn
             }
         }
@@ -161,6 +187,7 @@ export default class GameScene extends Phaser.Scene {
         this.coinAnimationTimer.destroy();
         this.coinSpawnTimer.destroy();
         if (this.taxManTimer) this.taxManTimer.destroy();
+        if (this.taxManHitbox) this.taxManHitbox.destroy();
 
         // Display game over text
         const gameOverText = this.add.text(this.scale.width / 2, this.scale.height / 2, 'Game Over!', {
@@ -253,8 +280,7 @@ export default class GameScene extends Phaser.Scene {
         if (this.isJumping) {
             if (this.jumpProgress < 1) {
                 this.jumpProgress += this.jumpStep;
-                const jumpHeight = 200;
-                const targetY = this.groundY - (jumpHeight * this.jumpProgress);
+                const targetY = this.groundY - (this.jumpHeight * this.jumpProgress);
                 this.player.y = targetY;
             }
             
