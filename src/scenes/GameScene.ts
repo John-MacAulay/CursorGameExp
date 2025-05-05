@@ -3,6 +3,7 @@ import Phaser from 'phaser';
 export default class GameScene extends Phaser.Scene {
     private backgrounds: Phaser.GameObjects.Sprite[] = [];
     private player!: Phaser.GameObjects.Sprite;
+    private coins: Phaser.GameObjects.Sprite[] = [];
     private score: number = 0;
     private scoreText!: Phaser.GameObjects.Text;
     private scoreTimer!: Phaser.Time.TimerEvent;
@@ -17,7 +18,10 @@ export default class GameScene extends Phaser.Scene {
     private jumpStep: number = 0.05;
     private backgroundKeys: string[] = ['background1', 'background2', 'background3'];
     private playerAnimationTimer!: Phaser.Time.TimerEvent;
+    private coinAnimationTimer!: Phaser.Time.TimerEvent;
+    private coinSpawnTimer!: Phaser.Time.TimerEvent;
     private currentPlayerFrame: number = 1;
+    private currentCoinFrame: number = 1;
 
     constructor() {
         super({ key: 'GameScene' });
@@ -27,6 +31,8 @@ export default class GameScene extends Phaser.Scene {
         // Load game assets
         this.load.image('player1', '/assets/player.png');
         this.load.image('player2', '/assets/player2.png');
+        this.load.image('coin1', '/assets/coin1.png');
+        this.load.image('coin2', '/assets/coin2.png');
         this.load.image('background1', '/assets/backgroundImage1.png');
         this.load.image('background2', '/assets/backgroundImage2.png');
         this.load.image('background3', '/assets/backgroundImage3.png');
@@ -61,7 +67,12 @@ export default class GameScene extends Phaser.Scene {
             color: '#ffffff'
         }).setOrigin(1, 0);
 
-        // Create a timer that fires every second
+        // Create timers
+        this.setupTimers();
+    }
+
+    setupTimers() {
+        // Score timer
         this.scoreTimer = this.time.addEvent({
             delay: 1000,
             callback: this.updateScore,
@@ -69,13 +80,112 @@ export default class GameScene extends Phaser.Scene {
             loop: true
         });
 
-        // Create player animation timer
+        // Player animation timer
         this.playerAnimationTimer = this.time.addEvent({
-            delay: 500, // 500ms = half second
+            delay: 500,
             callback: this.updatePlayerAnimation,
             callbackScope: this,
             loop: true
         });
+
+        // Coin animation timer
+        this.coinAnimationTimer = this.time.addEvent({
+            delay: 300,
+            callback: this.updateCoinAnimations,
+            callbackScope: this,
+            loop: true
+        });
+
+        // Coin spawn timer
+        this.coinSpawnTimer = this.time.addEvent({
+            delay: 2000, // Spawn a new coin every 2 seconds
+            callback: this.spawnCoin,
+            callbackScope: this,
+            loop: true
+        });
+    }
+
+    spawnCoin() {
+        // Calculate random height between top of screen and ground level
+        const minHeight = this.scale.height * 0.2; // 20% from top
+        const maxHeight = this.groundY - 50; // Slightly above ground
+        const randomY = Phaser.Math.Between(minHeight, maxHeight);
+
+        // Create coin at the right edge of the screen
+        const coin = this.add.sprite(this.scale.width + 50, randomY, 'coin1');
+        coin.setScale(0.15); // Adjust scale as needed
+        this.coins.push(coin);
+    }
+
+    updateCoinAnimations() {
+        this.currentCoinFrame = this.currentCoinFrame === 1 ? 2 : 1;
+        this.coins.forEach(coin => {
+            coin.setTexture(`coin${this.currentCoinFrame}`);
+        });
+    }
+
+    updateCoins() {
+        for (let i = this.coins.length - 1; i >= 0; i--) {
+            const coin = this.coins[i];
+            coin.x -= this.scrollSpeed;
+
+            // Remove coins that are off screen
+            if (coin.x < -50) {
+                coin.destroy();
+                this.coins.splice(i, 1);
+            }
+
+            // Check for collision with player
+            if (Phaser.Geom.Intersects.RectangleToRectangle(
+                this.player.getBounds(),
+                coin.getBounds()
+            )) {
+                this.score += 10;
+                this.scoreText.setText(`Score: ${this.score}`);
+                coin.destroy();
+                this.coins.splice(i, 1);
+            }
+        }
+    }
+
+    updatePlayerAnimation() {
+        if (!this.isJumping) {
+            this.currentPlayerFrame = this.currentPlayerFrame === 1 ? 2 : 1;
+            this.player.setTexture(`player${this.currentPlayerFrame}`);
+        }
+    }
+
+    update() {
+        // Update background positions
+        this.updateBackgrounds();
+
+        // Update coins
+        this.updateCoins();
+
+        // Handle jumping
+        if (Phaser.Input.Keyboard.JustDown(this.spaceKey) && !this.isJumping) {
+            this.isJumping = true;
+            this.jumpStartTime = this.time.now;
+            this.jumpProgress = 0;
+        }
+
+        // Apply gravity when jumping
+        if (this.isJumping) {
+            if (this.jumpProgress < 1) {
+                this.jumpProgress += this.jumpStep;
+                const jumpHeight = 200;
+                const targetY = this.groundY - (jumpHeight * this.jumpProgress);
+                this.player.y = targetY;
+            }
+            
+            this.player.y += this.gravity * (1/60);
+
+            if (this.player.y >= this.groundY) {
+                this.player.y = this.groundY;
+                this.isJumping = false;
+                this.jumpProgress = 0;
+            }
+        }
     }
 
     createBackgrounds() {
@@ -115,47 +225,5 @@ export default class GameScene extends Phaser.Scene {
     updateScore() {
         this.score += 1;
         this.scoreText.setText(`Score: ${this.score}`);
-    }
-
-    updatePlayerAnimation() {
-        // Only animate if not jumping
-        if (!this.isJumping) {
-            this.currentPlayerFrame = this.currentPlayerFrame === 1 ? 2 : 1;
-            this.player.setTexture(`player${this.currentPlayerFrame}`);
-        }
-    }
-
-    update() {
-        // Update background positions
-        this.updateBackgrounds();
-
-        // Handle jumping
-        if (Phaser.Input.Keyboard.JustDown(this.spaceKey) && !this.isJumping) {
-            this.isJumping = true;
-            this.jumpStartTime = this.time.now;
-            this.jumpProgress = 0;
-        }
-
-        // Apply gravity when jumping
-        if (this.isJumping) {
-            // Gradually increase jump progress
-            if (this.jumpProgress < 1) {
-                this.jumpProgress += this.jumpStep;
-                // Calculate new position based on progress
-                const jumpHeight = 200; // Maximum jump height
-                const targetY = this.groundY - (jumpHeight * this.jumpProgress);
-                this.player.y = targetY;
-            }
-            
-            // Always apply gravity
-            this.player.y += this.gravity * (1/60);
-
-            // Check if player has landed
-            if (this.player.y >= this.groundY) {
-                this.player.y = this.groundY;
-                this.isJumping = false;
-                this.jumpProgress = 0;
-            }
-        }
     }
 } 
