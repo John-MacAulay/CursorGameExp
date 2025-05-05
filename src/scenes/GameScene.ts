@@ -4,6 +4,7 @@ export default class GameScene extends Phaser.Scene {
     private backgrounds: Phaser.GameObjects.Sprite[] = [];
     private player!: Phaser.GameObjects.Sprite;
     private coins: Phaser.GameObjects.Sprite[] = [];
+    private taxMan?: Phaser.GameObjects.Sprite;
     private score: number = 0;
     private scoreText!: Phaser.GameObjects.Text;
     private scoreTimer!: Phaser.Time.TimerEvent;
@@ -20,8 +21,11 @@ export default class GameScene extends Phaser.Scene {
     private playerAnimationTimer!: Phaser.Time.TimerEvent;
     private coinAnimationTimer!: Phaser.Time.TimerEvent;
     private coinSpawnTimer!: Phaser.Time.TimerEvent;
+    private taxManTimer!: Phaser.Time.TimerEvent;
     private currentPlayerFrame: number = 1;
     private currentCoinFrame: number = 1;
+    private taxManSpeed: number = 3;
+    private gameOver: boolean = false;
 
     constructor() {
         super({ key: 'GameScene' });
@@ -33,6 +37,7 @@ export default class GameScene extends Phaser.Scene {
         this.load.image('player2', '/assets/player2.png');
         this.load.image('coin1', '/assets/coin1.png');
         this.load.image('coin2', '/assets/coin2.png');
+        this.load.image('taxman', '/assets/tax-man.png');
         this.load.image('background1', '/assets/backgroundImage1.png');
         this.load.image('background2', '/assets/backgroundImage2.png');
         this.load.image('background3', '/assets/backgroundImage3.png');
@@ -98,11 +103,81 @@ export default class GameScene extends Phaser.Scene {
 
         // Coin spawn timer
         this.coinSpawnTimer = this.time.addEvent({
-            delay: 3500, // Increased delay between coin spawns to 3.5 seconds
+            delay: 3500,
             callback: this.spawnCoin,
             callbackScope: this,
             loop: true
         });
+
+        // Tax man spawn timer (random intervals between 5-10 seconds)
+        this.spawnTaxMan();
+    }
+
+    spawnTaxMan() {
+        // Only spawn if no tax man exists and game is not over
+        if (!this.taxMan && !this.gameOver) {
+            this.taxMan = this.add.sprite(this.scale.width + 50, this.groundY, 'taxman');
+            this.taxMan.setScale(0.2);
+            
+            // Set up next spawn after random delay
+            const nextSpawnDelay = Phaser.Math.Between(5000, 10000);
+            this.taxManTimer = this.time.addEvent({
+                delay: nextSpawnDelay,
+                callback: this.spawnTaxMan,
+                callbackScope: this,
+                loop: false
+            });
+        }
+    }
+
+    updateTaxMan() {
+        if (this.taxMan && !this.gameOver) {
+            // Move tax man towards player
+            this.taxMan.x -= this.taxManSpeed;
+
+            // Check for collision with player
+            if (Phaser.Geom.Intersects.RectangleToRectangle(
+                this.player.getBounds(),
+                this.taxMan.getBounds()
+            )) {
+                this.endGame();
+            }
+
+            // Remove tax man if off screen
+            if (this.taxMan.x < -50) {
+                this.taxMan.destroy();
+                this.taxMan = undefined;
+                this.spawnTaxMan(); // Set up next spawn
+            }
+        }
+    }
+
+    endGame() {
+        this.gameOver = true;
+        
+        // Stop all timers
+        this.scoreTimer.destroy();
+        this.playerAnimationTimer.destroy();
+        this.coinAnimationTimer.destroy();
+        this.coinSpawnTimer.destroy();
+        if (this.taxManTimer) this.taxManTimer.destroy();
+
+        // Display game over text
+        const gameOverText = this.add.text(this.scale.width / 2, this.scale.height / 2, 'Game Over!', {
+            fontSize: '48px',
+            color: '#ff0000'
+        }).setOrigin(0.5);
+
+        const finalScoreText = this.add.text(this.scale.width / 2, this.scale.height / 2 + 60, `Final Score: ${this.score}`, {
+            fontSize: '32px',
+            color: '#ffffff'
+        }).setOrigin(0.5);
+
+        // Add restart instructions
+        const restartText = this.add.text(this.scale.width / 2, this.scale.height / 2 + 120, 'Refresh to play again', {
+            fontSize: '24px',
+            color: '#ffffff'
+        }).setOrigin(0.5);
     }
 
     spawnCoin() {
@@ -156,11 +231,16 @@ export default class GameScene extends Phaser.Scene {
     }
 
     update() {
+        if (this.gameOver) return;
+
         // Update background positions
         this.updateBackgrounds();
 
         // Update coins
         this.updateCoins();
+
+        // Update tax man
+        this.updateTaxMan();
 
         // Handle jumping
         if (Phaser.Input.Keyboard.JustDown(this.spaceKey) && !this.isJumping) {
