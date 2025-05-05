@@ -2,9 +2,10 @@
 
 A 2D scrolling game built with Phaser 3, React, and Vite. The game features a procedurally generated cityscape background and a character that can jump over obstacles.
 
-## Screenshot
+## Screenshots
 
 ![Game Screenshot](docs/game-screenshot.png)
+![Game Screenshot 2](docs/game-screenshot-2.png)
 
 ## Features
 
