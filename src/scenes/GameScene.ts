@@ -34,7 +34,7 @@ export default class GameScene extends Phaser.Scene {
         this.createBackgrounds();
 
         // Create a player sprite - positioned lower on the screen
-        this.player = this.add.sprite(100, this.scale.height * 0.8, 'player');
+        this.player = this.add.sprite(100, this.scale.height * 0.9, 'player');
         this.player.setScale(0.2);
         
         // Store the ground Y position
