@@ -16,6 +16,8 @@ export default class GameScene extends Phaser.Scene {
     private jumpProgress: number = 0;
     private jumpStep: number = 0.05;
     private backgroundKeys: string[] = ['background1', 'background2', 'background3'];
+    private playerAnimationTimer!: Phaser.Time.TimerEvent;
+    private currentPlayerFrame: number = 1;
 
     constructor() {
         super({ key: 'GameScene' });
@@ -23,7 +25,8 @@ export default class GameScene extends Phaser.Scene {
 
     preload() {
         // Load game assets
-        this.load.image('player', '/assets/player.png');
+        this.load.image('player1', '/assets/player.png');
+        this.load.image('player2', '/assets/player2.png');
         this.load.image('background1', '/assets/backgroundImage1.png');
         this.load.image('background2', '/assets/backgroundImage2.png');
         this.load.image('background3', '/assets/backgroundImage3.png');
@@ -34,7 +37,7 @@ export default class GameScene extends Phaser.Scene {
         this.createBackgrounds();
 
         // Create a player sprite - positioned lower on the screen
-        this.player = this.add.sprite(100, this.scale.height * 0.9, 'player');
+        this.player = this.add.sprite(100, this.scale.height * 0.9, 'player1');
         this.player.setScale(0.2);
         
         // Store the ground Y position
@@ -62,6 +65,14 @@ export default class GameScene extends Phaser.Scene {
         this.scoreTimer = this.time.addEvent({
             delay: 1000,
             callback: this.updateScore,
+            callbackScope: this,
+            loop: true
+        });
+
+        // Create player animation timer
+        this.playerAnimationTimer = this.time.addEvent({
+            delay: 500, // 500ms = half second
+            callback: this.updatePlayerAnimation,
             callbackScope: this,
             loop: true
         });
@@ -104,6 +115,14 @@ export default class GameScene extends Phaser.Scene {
     updateScore() {
         this.score += 1;
         this.scoreText.setText(`Score: ${this.score}`);
+    }
+
+    updatePlayerAnimation() {
+        // Only animate if not jumping
+        if (!this.isJumping) {
+            this.currentPlayerFrame = this.currentPlayerFrame === 1 ? 2 : 1;
+            this.player.setTexture(`player${this.currentPlayerFrame}`);
+        }
     }
 
     update() {
