@@ -98,7 +98,7 @@ export default class GameScene extends Phaser.Scene {
 
         // Coin spawn timer
         this.coinSpawnTimer = this.time.addEvent({
-            delay: 2000, // Spawn a new coin every 2 seconds
+            delay: 3500, // Increased delay between coin spawns to 3.5 seconds
             callback: this.spawnCoin,
             callbackScope: this,
             loop: true
@@ -140,7 +140,7 @@ export default class GameScene extends Phaser.Scene {
                 this.player.getBounds(),
                 coin.getBounds()
             )) {
-                this.score += 10;
+                this.score += 25; // Increased points per coin to 25
                 this.scoreText.setText(`Score: ${this.score}`);
                 coin.destroy();
                 this.coins.splice(i, 1);
