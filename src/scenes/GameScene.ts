@@ -1,22 +1,21 @@
 import Phaser from 'phaser';
 
 export default class GameScene extends Phaser.Scene {
-    private background!: Phaser.GameObjects.TileSprite;
+    private backgrounds: Phaser.GameObjects.Sprite[] = [];
     private player!: Phaser.GameObjects.Sprite;
-    private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
     private score: number = 0;
     private scoreText!: Phaser.GameObjects.Text;
     private scoreTimer!: Phaser.Time.TimerEvent;
     private scrollSpeed: number = 2;
     private spaceKey!: Phaser.Input.Keyboard.Key;
     private isJumping: boolean = false;
-    private jumpVelocity: number = -200;
     private gravity: number = 200;
     private groundY: number = 0;
     private jumpStartTime: number = 0;
     private maxJumpDuration: number = 800;
     private jumpProgress: number = 0;
-    private jumpStep: number = 0.05; // Controls how quickly the player rises
+    private jumpStep: number = 0.05;
+    private backgroundKeys: string[] = ['background1', 'background2', 'background3'];
 
     constructor() {
         super({ key: 'GameScene' });
@@ -25,32 +24,14 @@ export default class GameScene extends Phaser.Scene {
     preload() {
         // Load game assets
         this.load.image('player', '/assets/player.png');
-        
-        // Create a temporary background texture
-        const graphics = this.make.graphics({ x: 0, y: 0 });
-        
-        // Draw a building pattern
-        graphics.fillStyle(0x2c3e50); // Dark blue-gray for buildings
-        graphics.fillRect(0, 0, 200, this.scale.height);
-        
-        // Add windows
-        graphics.fillStyle(0xf1c40f); // Yellow for windows
-        for (let y = 50; y < this.scale.height - 50; y += 100) {
-            for (let x = 20; x < 180; x += 40) {
-                graphics.fillRect(x, y, 20, 30);
-            }
-        }
-        
-        // Generate the texture
-        graphics.generateTexture('background', 200, this.scale.height);
-        graphics.destroy();
+        this.load.image('background1', '/assets/backgroundImage1.png');
+        this.load.image('background2', '/assets/backgroundImage2.png');
+        this.load.image('background3', '/assets/backgroundImage3.png');
     }
 
     create() {
-        // Create a scrolling background
-        this.background = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, 'background')
-            .setOrigin(0, 0)
-            .setScrollFactor(0);
+        // Create scrolling backgrounds
+        this.createBackgrounds();
 
         // Create a player sprite - positioned lower on the screen
         this.player = this.add.sprite(100, this.scale.height * 0.8, 'player');
@@ -86,14 +67,48 @@ export default class GameScene extends Phaser.Scene {
         });
     }
 
+    createBackgrounds() {
+        // Clear existing backgrounds
+        this.backgrounds.forEach(bg => bg.destroy());
+        this.backgrounds = [];
+
+        // Create backgrounds in sequence
+        this.backgroundKeys.forEach((key, index) => {
+            const bg = this.add.sprite(index * this.scale.width, 0, key)
+                .setOrigin(0, 1); // Set origin to bottom-left corner
+            bg.displayWidth = this.scale.width;
+            bg.displayHeight = this.scale.height;
+            // Position at the bottom of the screen
+            bg.y = this.scale.height;
+            this.backgrounds.push(bg);
+        });
+    }
+
+    updateBackgrounds() {
+        this.backgrounds.forEach(bg => {
+            // Move background to the left
+            bg.x -= this.scrollSpeed;
+
+            // If background has moved completely off screen to the left
+            if (bg.x <= -this.scale.width) {
+                // Find the rightmost background
+                const rightmostBg = this.backgrounds.reduce((prev, current) => 
+                    (current.x > prev.x) ? current : prev
+                );
+                // Place this background right after the rightmost one
+                bg.x = rightmostBg.x + this.scale.width;
+            }
+        });
+    }
+
     updateScore() {
         this.score += 1;
         this.scoreText.setText(`Score: ${this.score}`);
     }
 
     update() {
-        // Scroll the background
-        this.background.tilePositionX += this.scrollSpeed;
+        // Update background positions
+        this.updateBackgrounds();
 
         // Handle jumping
         if (Phaser.Input.Keyboard.JustDown(this.spaceKey) && !this.isJumping) {
