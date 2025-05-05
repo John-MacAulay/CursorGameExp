@@ -8,7 +8,7 @@ A 2D scrolling game built with Phaser 3, React, and Vite. The game features a pr
 
 ## Features
 
-- Procedurally generated scrolling cityscape background
+- Procedurally generated scrolling cityscape background, The cityscape background is coming, my image generation skills were bad and slow, even bought tokens
 - Smooth player jumping mechanics with gradual height control
 - Score system that increases over time
 - Responsive game canvas that adapts to window size
