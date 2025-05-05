@@ -78,6 +78,9 @@ export default class GameScene extends Phaser.Scene {
 
         // Create timers
         this.setupTimers();
+
+        // Initial tax man spawn
+        this.spawnTaxMan();
     }
 
     setupTimers() {
@@ -112,9 +115,6 @@ export default class GameScene extends Phaser.Scene {
             callbackScope: this,
             loop: true
         });
-
-        // Tax man spawn timer (random intervals between 5-10 seconds)
-        this.spawnTaxMan();
     }
 
     spawnTaxMan() {
@@ -135,8 +135,8 @@ export default class GameScene extends Phaser.Scene {
             this.taxManHitbox.setOrigin(0.5);
             this.taxManHitbox.setVisible(false);
             
-            // Set up next spawn after much longer random delay (8-12 minutes)
-            const nextSpawnDelay = Phaser.Math.Between(480000, 720000);
+            // Set up next spawn after random delay (5-12 seconds)
+            const nextSpawnDelay = Phaser.Math.Between(5000, 12000);
             this.taxManTimer = this.time.addEvent({
                 delay: nextSpawnDelay,
                 callback: this.spawnTaxMan,
@@ -173,7 +173,6 @@ export default class GameScene extends Phaser.Scene {
                 this.taxManHitbox.destroy();
                 this.taxMan = undefined;
                 this.taxManHitbox = undefined;
-                this.spawnTaxMan(); // Set up next spawn
             }
         }
     }
